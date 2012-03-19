@@ -7,11 +7,21 @@ from logger import Logger
 import MySQLdb
 import sys
 
+class Singleton(type):
+    def __init__(cls, *params, **kw):
+        cls.instance = None
+
+    def __call__(cls, *params, **kw):
+        if cls.instance is None:
+            cls.instance = super(Singleton, cls).__call__(*params, **kw)
+        return cls.instance
+
 class DB(object):
-    _conf   = None
-    _log    = None
-    _conn   = None
-    _cursor = None
+    __metaclass__   = Singleton
+    _conf           = None
+    _log            = None
+    _conn           = None
+    _cursor         = None
 
     def __init__(self):
         self._conf = Config()
