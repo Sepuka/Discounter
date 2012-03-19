@@ -5,6 +5,7 @@
 from config import Config
 from logger import Logger
 from db import DB
+from modules import *
 
 #TODO Написать перехватчик ошибок (как он там называется)
 
@@ -21,6 +22,16 @@ class Grabber(object):
 
         modules = self._getGrabModules()
         self._log.info('Предстоит выполнить %d модулей', len(modules))
+        self._runGrabModules(modules)
+
+    def _runGrabModules(self, modules):
+        """
+        Запуск требуемых модулей
+        @param: modules Кортеж модулей
+        @type: tuple
+        """
+        for module in modules:
+            self._log.debug('Обрабатываю модуль "%s"', module)
 
     def _getGrabModules(self):
         """
