@@ -6,6 +6,10 @@ from config import Config
 from logger import Logger
 import MySQLdb
 import sys
+from traceback import extract_tb, format_list
+
+DISABLED_RESOURCE   = 0
+ENABLED_RESOURCE    = 1
 
 class Singleton(type):
     def __init__(cls, *params, **kw):
@@ -64,5 +68,9 @@ class DB(object):
         except (MySQLdb.Error, MySQLdb.IntegrityError), e:
             self._log.critical('Mysql runtime error %d: %s', e.args[0], e.args[1])
             sys.exit(e.args[1])
+        except (TypeError,), e:
+            self._log.debug('trace:\n%s', '\n'.join(format_list(extract_tb(sys.exc_info()[2]))))
+            self._log.critical('Ошибка формирования запроса из шаблона: %s', e)
+            sys.exit(e)
         else:
             return self._cursor.lastrowid
