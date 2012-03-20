@@ -1,2 +1,0 @@
-import infoskidka
-import test

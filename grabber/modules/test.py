@@ -20,10 +20,4 @@ class Test(AbstractModule):
         self._log.info('Инициализирован модуль %s', __name__)
 
     def parse(self):
-        pass
-
-if __name__ == '__main__':
-    sys.exit('Модуль не может быть запущен самостоятельно!')
-else:
-    module = Test()
-    module.parse()
+        self._log.debug('Запущен парсер %s', __name__)

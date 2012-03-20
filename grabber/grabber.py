@@ -3,9 +3,9 @@
 #vim: set syntax=python
 
 from config import Config
-from logger import Logger
+from logger import Logger, asciify
 from db import DB
-from modules import *
+from modules.abstractmodule import AbstractModule
 
 #TODO Написать перехватчик ошибок (как он там называется)
 
@@ -31,7 +31,21 @@ class Grabber(object):
         @type: tuple
         """
         for module in modules:
-            self._log.debug('Обрабатываю модуль "%s"', module)
+            self._log.debug('Обрабатываю модуль "%s"', module[0])
+            # Импорт модуля
+            mod_pack = __import__('modules.' + module[0])
+            # например <module 'modules' from '/srv/www/Discounter/grabber/modules/__init__.pyc'>
+            modName = getattr(mod_pack, dir(mod_pack)[-1])
+            # Определение имени модуля (стоит последним)
+            # например ['__builtins__', '__doc__', '__file__', '__name__', '__package__', '__path__', 'abstractmodule', 'infoskidka']
+            className = modName.__name__.split('.')[-1].capitalize()
+            # Капитализация названия и получение класса
+            classObj = getattr(modName, className)
+            if issubclass(classObj, AbstractModule):
+                parser = classObj()
+                parser.parse()
+            else:
+                self._log.error('Класс %s не является потомком %s !', classObj, AbstractModule)
 
     def _getGrabModules(self):
         """
@@ -41,7 +55,7 @@ class Grabber(object):
         query = """SELECT `module` FROM `resource` WHERE `enabled`='1'"""
         self._db.execute(query)
         if self._db.cursor.rowcount:
-            return self._db.cursor.fetchone()
+            return self._db.cursor.fetchall()
         else:
             return tuple()
 
