@@ -8,6 +8,7 @@ from db import DB, ENABLED_RESOURCE, DISABLED_RESOURCE
 import sys
 from abstractmodule import AbstractModule
 from grab import Grab
+from grabber import FailedExtractURLException
 
 class Infoskidka(AbstractModule):
     _conf           = None
@@ -25,35 +26,34 @@ class Infoskidka(AbstractModule):
 
     def _getStartURL(self):
         """
-        Получение адреса узла с которого следует начать обработку
+        Получение кротежа адресов узлов с которого следует начать обработку
         Адрес узла должен представлять собой страницу со ссылками на различные
         категории скидок
-        @return string
+        @return None
         """
         query = """SELECT url FROM resource WHERE module=%s AND enabled=%s"""
         self._db.execute(query, self.__class__.__name__.lower(), ENABLED_RESOURCE)
         if self._db.cursor.rowcount:
-            return self._db.cursor.fetchone()[0]
+            self._startURL = self._db.cursor.fetchall()
         else:
-            return None
+            raise FailedExtractURLException('Ошибка извлечения адреса модуля %s' % __name__)
 
     def _getCategoriesLinks(self):
         """
         Получает ссылки на страницы со скидками
         @return list
         """
-        self._grab.go(self._startURL)
-        links = self._grab.xpath_list('//*/a[starts-with(@href,"/skidki/")]')
+        links = self._grab.xpath_list('//*/a[contains(@href,"/skidki/")]')
         self._log.info('Найдено %s ссылок', len(links))
         return links
 
     def parse(self):
         self._log.debug('Запущен парсер %s', __name__)
-        self._startURL = self._getStartURL()
-        if self._startURL is None:
-            self._log.error('Не удалось получить адрес страницы с категориями')
-            return
-        else:
-            self._log.debug('Обработка узла %s', self._startURL)
-        for link in self._getCategoriesLinks():
-            self._log.debug('Обрабатываю %s (%s)', link.attrib['href'], link.text)
+        self._getStartURL()
+        for url in self._startURL:
+            url = url[0]
+            self._log.debug('Обработка узла %s', url)
+            self._grab.go(url)
+            self._grab.tree.make_links_absolute(url)
+            for link in self._getCategoriesLinks():
+                self._log.debug('Обрабатываю %s (%s)', link.attrib['href'], link.text)

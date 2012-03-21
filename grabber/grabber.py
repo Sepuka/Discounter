@@ -6,6 +6,11 @@ from config import Config
 from logger import Logger, asciify
 from db import DB
 from modules.abstractmodule import AbstractModule
+from traceback import extract_tb, format_list
+import sys
+
+class FailedExtractURLException(Exception):
+    pass
 
 #TODO Написать перехватчик ошибок (как он там называется)
 
@@ -43,7 +48,11 @@ class Grabber(object):
             classObj = getattr(modName, className)
             if issubclass(classObj, AbstractModule):
                 parser = classObj()
-                parser.parse()
+                try:
+                    parser.parse()
+                except (Exception,), e:
+                    self._log.debug('trace:\n%s', '\n'.join(format_list(extract_tb(sys.exc_info()[2]))))
+                    self._log.error('Ошибка работы обработчика %s:%s', classObj, e)
             else:
                 self._log.error('Класс %s не является потомком %s !', classObj, AbstractModule)
 
