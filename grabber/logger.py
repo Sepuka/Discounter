@@ -60,15 +60,22 @@ class Logger(object):
     def __init__(self):
         self._conf = Config()
         log_path = os.path.join(os.getcwd(), self._conf.get('log', 'path'))
+        log_grab = os.path.join(os.getcwd(), self._conf.get('log', 'grab'))
         log_when = 'midnight'
 
         handler = logging.handlers.TimedRotatingFileHandler(log_path, when=log_when)
+        handler_grab = logging.handlers.TimedRotatingFileHandler(log_grab, when=log_when)
         handler.setFormatter(logging.Formatter('%(asctime)-15s %(levelname)-8s %(message)s'))
         handler.setLevel(self._conf.getint('log', 'level'))
+        handler_grab.setLevel(self._conf.getint('log', 'grabLevel'))
 
         self.__log = logging.getLogger('discounter')
         self.__log.setLevel(self._conf.getint('log', 'level'))
         self.__log.addHandler(handler)
+
+        grabLogger = logging.getLogger('grab')
+        grabLogger.setLevel(self._conf.getint('log', 'grabLevel'))
+        grabLogger.addHandler(handler_grab)
 
     def _log(self, msg, *args, **kw):
         """
