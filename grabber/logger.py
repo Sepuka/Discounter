@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #vim: set syntax=python
 
-import logging, os
+import logging, os, sys
 from logging import CRITICAL, ERROR, WARNING, INFO, DEBUG
 from logging.handlers import TimedRotatingFileHandler
 from config import Config
@@ -65,7 +65,7 @@ class Logger(object):
 
         handler = logging.handlers.TimedRotatingFileHandler(log_path, when=log_when)
         handler_grab = logging.handlers.TimedRotatingFileHandler(log_grab, when=log_when)
-        handler.setFormatter(logging.Formatter('%(asctime)-15s %(levelname)-8s %(message)s'))
+        handler.setFormatter(logging.Formatter('%(asctime)-15s %(levelname)-8s [%(moduleName)-10s] %(message)s'))
         handler.setLevel(self._conf.getint('log', 'level'))
         handler_grab.setLevel(self._conf.getint('log', 'grabLevel'))
 
@@ -82,13 +82,17 @@ class Logger(object):
         Запись в лог
         """
         try:
-            kw['exc_info']
+            exc_info = kw['exc_info']
         except KeyError:
             exc_info = False
         else:
             exc_info = sys.exc_info()
+        try:
+            extraParams = {'moduleName': kw['moduleName']}
+        except KeyError:
+            extraParams = {'moduleName':'grabber'}
         msg = msg % asciify(args)
-        self.__log.log(kw['level'], asciify(msg), exc_info=exc_info)
+        self.__log.log(kw['level'], asciify(msg), exc_info=exc_info, extra=asciify(extraParams))
 
     def debug(self, msg, *args, **kwargs):
         """
@@ -103,6 +107,7 @@ class Logger(object):
         """
         kwargs['level'] = INFO
         self._log(msg, *args, **kwargs)
+
     def warning(self, msg, *args, **kwargs):
         """
         Запись в лог типа WARNING
