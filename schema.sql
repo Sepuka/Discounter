@@ -31,6 +31,15 @@ CREATE TABLE `category` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Dumping data for table `category`
+--
+
+LOCK TABLES `category` WRITE;
+/*!40000 ALTER TABLE `category` DISABLE KEYS */;
+/*!40000 ALTER TABLE `category` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `good`
 --
 
@@ -57,6 +66,15 @@ CREATE TABLE `good` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Dumping data for table `good`
+--
+
+LOCK TABLES `good` WRITE;
+/*!40000 ALTER TABLE `good` DISABLE KEYS */;
+/*!40000 ALTER TABLE `good` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `resource`
 --
 
@@ -75,6 +93,16 @@ CREATE TABLE `resource` (
   KEY `module` (`module`)
 ) ENGINE=MyISAM AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `resource`
+--
+
+LOCK TABLES `resource` WRITE;
+/*!40000 ALTER TABLE `resource` DISABLE KEYS */;
+INSERT INTO `resource` VALUES (1,1,'http://spb.infoskidka.ru/','infoskidka','Saint-Petersburg',NULL),(2,1,'http://test','test','Saint-Petersburg',NULL),(3,1,'http://www.infoskidka.ru/','infoskidka','Moscow',NULL);
+/*!40000 ALTER TABLE `resource` ENABLE KEYS */;
+UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -85,4 +113,4 @@ CREATE TABLE `resource` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2012-03-24  9:12:01
+-- Dump completed on 2012-03-24 19:11:50
