@@ -31,15 +31,6 @@ CREATE TABLE `category` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `category`
---
-
-LOCK TABLES `category` WRITE;
-/*!40000 ALTER TABLE `category` DISABLE KEYS */;
-/*!40000 ALTER TABLE `category` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `good`
 --
 
@@ -66,15 +57,6 @@ CREATE TABLE `good` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `good`
---
-
-LOCK TABLES `good` WRITE;
-/*!40000 ALTER TABLE `good` DISABLE KEYS */;
-/*!40000 ALTER TABLE `good` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `resource`
 --
 
@@ -89,18 +71,10 @@ CREATE TABLE `resource` (
   `city` varchar(64) DEFAULT NULL,
   `successGrab` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `enabled` (`enabled`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+  KEY `enabled` (`enabled`),
+  KEY `module` (`module`)
+) ENGINE=MyISAM AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `resource`
---
-
-LOCK TABLES `resource` WRITE;
-/*!40000 ALTER TABLE `resource` DISABLE KEYS */;
-/*!40000 ALTER TABLE `resource` ENABLE KEYS */;
-UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -111,4 +85,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2012-03-16 18:00:50
+-- Dump completed on 2012-03-24  9:12:01
