@@ -25,7 +25,7 @@ class Infoskidka(AbstractModule):
         self._log = Logger()
         self._db = DB()
         self._grab = grab.Grab()
-        self._log.info('Инициализирован модуль %s', self.__class__.__name__)
+        self._log.info('Инициализирован модуль', moduleName=self.__class__.__name__)
 
     def __getattr__(self, name):
         try:
@@ -36,6 +36,9 @@ class Infoskidka(AbstractModule):
                 part = partial(obj, moduleName=self.__class__.__name__)
                 self._logNamesPart[name] = part
                 return part
+            else:
+                self._log.error('Попытка вызова несуществующего типа лога "%s"',
+                    name, moduleName=self.__class__.__name__)
 
     def _getStartURL(self):
         """
@@ -51,21 +54,46 @@ class Infoskidka(AbstractModule):
         else:
             raise FailedExtractURLException('Ошибка извлечения адреса модуля %s' % __name__)
 
-    def _getCategoriesLinks(self):
-        """
-        Получает ссылки на страницы со скидками
-        @return list
-        """
-        links = self._grab.xpath_list('//*/a[contains(@href,"/skidki/")]')
-        self.info('Найдено %s ссылок', len(links))
-        return links
-
     def _getLinksArea(self):
+        """
+        Получение области данных содержащих ссылки и их описание
+        А также описание категории
+        @return lxml.html.HtmlElement
+        """
+        pattern = '//*/ul[@class="c_catalog"]'
         try:
-            return self._grab.xpath_list('//*/ul[@class="c_catalog"]')
+            return self._grab.xpath(pattern)
         except grab.error.DataNotFound:
             self.critical('Не удалось получить область ссылок')
             raise
+
+    def _getCategoryListBlocks(self, linksArea):
+        """
+        Получение списка блоков содержащих категорию
+        Возвращает список элементов lxml.html.HtmlElement
+        @return list
+        """
+        pattern = 'li[starts-with(@class, "ct")]'
+        return linksArea.xpath(pattern)
+
+    def _getSubCategoriesLinks(self, category):
+        """
+        Получение списка ссылок на подкатегории
+        @param category
+        @type lxml.htmlHtmlElement
+
+        @return list
+        """
+        pattern = 'div/a[contains(@href,"/skidki/")]'
+        return category.xpath(pattern)
+
+    def _getCategoryName(self, blockCategories):
+        """
+        Получение имени категории
+        @return string
+        """
+        pattern = 'div/h3'
+        return blockCategories.xpath(pattern)[0].text
 
     def parse(self):
         self.debug('Запущен парсер')
@@ -75,7 +103,13 @@ class Infoskidka(AbstractModule):
             self.debug('Обработка узла %s', url)
             self._grab.go(url)
             self._grab.tree.make_links_absolute(url)
-            #Получим область ссылок с описанием категорий и подкатегорий
+            # Получим область ссылок с описанием категорий и подкатегорий
             linksArea = self._getLinksArea()
-            #for link in self._getCategoriesLinks():
-            #    self.debug('Обрабатываю %s (%s)', link.attrib['href'], link.text)
+            # Из области ссылок получаем блоки категорий
+            for block in self._getCategoryListBlocks(linksArea):
+                categoryName = self._getCategoryName(block)
+                self.debug('Обрабатываю категорию "%s"', categoryName)
+                subCategoryLinks = self._getSubCategoriesLinks(block)
+                self.debug('Найдено %s ссылок', len(subCategoryLinks))
+                for link in subCategoryLinks:
+                    self.debug('Обрабатываю %s (%s)', link.attrib['href'], link.text)
