@@ -95,7 +95,17 @@ class Infoskidka(AbstractModule):
         pattern = 'div/h3'
         return blockCategories.xpath(pattern)[0].text
 
+    def _setCategory(self, category, subcategory):
+        """
+        Добавление категории и подкатегории
+        """
+        query = """REPLACE INTO category SET category=%s, subcategory=%s"""
+        self._db.execute(query, category, subcategory)
+
     def parse(self):
+        """
+        Основной метод
+        """
         self.debug('Запущен парсер')
         self._getStartURL()
         for url in self._startURL:
@@ -113,3 +123,4 @@ class Infoskidka(AbstractModule):
                 self.debug('Найдено %s ссылок', len(subCategoryLinks))
                 for link in subCategoryLinks:
                     self.debug('Обрабатываю %s (%s)', link.attrib['href'], link.text)
+                    self._setCategory(categoryName, link.text)
