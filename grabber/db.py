@@ -11,17 +11,7 @@ from traceback import extract_tb, format_list
 DISABLED_RESOURCE   = 0
 ENABLED_RESOURCE    = 1
 
-class Singleton(type):
-    def __init__(cls, *params, **kw):
-        cls.instance = None
-
-    def __call__(cls, *params, **kw):
-        if cls.instance is None:
-            cls.instance = super(Singleton, cls).__call__(*params, **kw)
-        return cls.instance
-
 class DB(object):
-    __metaclass__   = Singleton
     _conf           = None
     _log            = None
     _conn           = None
@@ -50,10 +40,10 @@ class DB(object):
                 )
                 self._cursor = self._conn.cursor()
             except Exception, ex:
-                self._log.critical('Ошибка соединения с БД', exc_info=True)
+                self._log.critical('Ошибка соединения с БД', exc_info=True, moduleName=self.__class__.__name__)
                 sys.exit(ex)
             else:
-                self._log.debug('Создано соединение с БД')
+                self._log.debug('Создано соединение с БД', moduleName=self.__class__.__name__)
 
     @property
     def cursor(self):
@@ -63,14 +53,14 @@ class DB(object):
         try:
             self._cursor.execute(query, params)
             if self._cursor._warnings:
-                self._log.critical('warning detected!')
+                self._log.critical('warning detected!', moduleName=self.__class__.__name__)
                 sys.exit('Warning detected!')
         except (MySQLdb.Error, MySQLdb.IntegrityError), e:
-            self._log.critical('Mysql runtime error %d: %s', e.args[0], e.args[1])
+            self._log.critical('Mysql runtime error %d: %s', e.args[0], e.args[1], self.__class__.__name__)
             sys.exit(e.args[1])
         except (TypeError,), e:
             self._log.debug('trace:\n%s', '\n'.join(format_list(extract_tb(sys.exc_info()[2]))))
-            self._log.critical('Ошибка формирования запроса из шаблона: %s', e)
+            self._log.critical('Ошибка формирования запроса из шаблона: %s', e, moduleName=self.__class__.__name__)
             sys.exit(e)
         else:
             return self._cursor.lastrowid
