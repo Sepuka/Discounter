@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 5.1.57, for suse-linux-gnu (i686)
+-- MySQL dump 10.13  Distrib 5.5.16, for Linux (i686)
 --
 -- Host: localhost    Database: discounter
 -- ------------------------------------------------------
--- Server version	5.1.57-log
+-- Server version	5.5.16-log
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -26,8 +26,9 @@ CREATE TABLE `category` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `category` varchar(64) NOT NULL,
   `subcategory` varchar(128) NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `category` (`category`,`subcategory`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -61,8 +62,10 @@ CREATE TABLE `good` (
   `endDate` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `id_resource` (`id_resource`),
-  KEY `id_category` (`id_category`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+  KEY `id_category` (`id_category`),
+  CONSTRAINT `good_ibfk_1` FOREIGN KEY (`id_resource`) REFERENCES `resource` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `good_ibfk_2` FOREIGN KEY (`id_category`) REFERENCES `category` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -91,7 +94,7 @@ CREATE TABLE `resource` (
   PRIMARY KEY (`id`),
   KEY `enabled` (`enabled`),
   KEY `module` (`module`)
-) ENGINE=MyISAM AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -113,4 +116,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2012-03-24 19:11:50
+-- Dump completed on 2012-03-27 15:26:05
