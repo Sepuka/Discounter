@@ -19,6 +19,8 @@ class Infoskidka(AbstractModule):
     _grab           = None
     # Словарь имен вызванных логов для partial
     _logNamesPart   = {}
+    # Текущая обрабатываемая страница
+    _currentPage    = 0
 
     def __init__(self):
         self._conf = Config('/srv/www/Discounter/config.cfg')
@@ -95,12 +97,26 @@ class Infoskidka(AbstractModule):
         pattern = 'div/h3'
         return blockCategories.xpath(pattern)[0].text
 
+    def _getGoods(self, url):
+        self.debug('Получение ссылок на скидки в магазинах с "%s"', url)
+        self._grab.go(url)
+        return []
+
     def _setCategory(self, category, subcategory):
         """
         Добавление категории и подкатегории
         """
         query = """REPLACE INTO category SET category=%s, subcategory=%s"""
         self._db.execute(query, category, subcategory)
+
+    def _prepareURL(self, url):
+        """
+        Подготовка адреса страницы со ссылками на магазины
+        Магазины хранятся постранично
+        @return string
+        """
+        self._currentPage += 1
+        return '%s/page.%d.html' % (url[:url.rfind('.')], self._currentPage)
 
     def parse(self):
         """
@@ -120,7 +136,13 @@ class Infoskidka(AbstractModule):
                 categoryName = self._getCategoryName(block)
                 self.debug('Обрабатываю категорию "%s"', categoryName)
                 subCategoryLinks = self._getSubCategoriesLinks(block)
-                self.debug('Найдено %s ссылок', len(subCategoryLinks))
+                self.debug('Найдено %d подкатегорий', len(subCategoryLinks))
                 for link in subCategoryLinks:
-                    self.debug('Обрабатываю %s (%s)', link.attrib['href'], link.text)
+                    self.debug('Обрабатываю подкатегорию %s (%s)', link.text, link.attrib['href'])
+                    # Сохраним категорию/подкатегорию в БД
                     self._setCategory(categoryName, link.text)
+                    while self._grab.response.code == 200:
+                        goods = self._getGoods(self._prepareURL(link.attrib['href']))
+                    self.debug('В подкатегории "%s" обработано %d страниц', link.text, self._currentPage)
+                    return # выход
+                return # выход
