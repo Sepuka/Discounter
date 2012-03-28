@@ -10,6 +10,7 @@ from abstractmodule import AbstractModule
 import grab
 from grabber import FailedExtractURLException
 from functools import partial
+from time import sleep
 
 class Infoskidka(AbstractModule):
     _conf           = None
@@ -49,7 +50,7 @@ class Infoskidka(AbstractModule):
         категории скидок
         @return None
         """
-        query = """SELECT url FROM resource WHERE module=%s AND enabled=%s"""
+        query = """SELECT id, url FROM resource WHERE module=%s AND enabled=%s"""
         self._db.execute(query, self.__class__.__name__.lower(), ENABLED_RESOURCE)
         if self._db.cursor.rowcount:
             self._startURL = self._db.cursor.fetchall()
@@ -102,12 +103,14 @@ class Infoskidka(AbstractModule):
         self._grab.go(url)
         return []
 
-    def _setCategory(self, category, subcategory):
+    def _setCategory(self, id_resource, category, subcategory):
         """
         Добавление категории и подкатегории
+        Если категория в ресурсе уже существует, она затрется, при этом
+        удалятся все товары из таблицы good
         """
-        query = """REPLACE INTO category SET category=%s, subcategory=%s"""
-        self._db.execute(query, category, subcategory)
+        query = """REPLACE INTO category SET id_resource=%s, category=%s, subcategory=%s"""
+        self._db.execute(query, id_resource, category, subcategory)
 
     def _prepareURL(self, url):
         """
@@ -125,8 +128,9 @@ class Infoskidka(AbstractModule):
         self.debug('Запущен парсер')
         self._getStartURL()
         for url in self._startURL:
-            url = url[0]
-            self.debug('Обработка узла %s', url)
+            id_resource = url[0]
+            url = url[1]
+            self.debug('Обработка узла %s (id %s)', url, id_resource)
             self._grab.go(url)
             self._grab.tree.make_links_absolute(url)
             # Получим область ссылок с описанием категорий и подкатегорий
@@ -137,12 +141,16 @@ class Infoskidka(AbstractModule):
                 self.debug('Обрабатываю категорию "%s"', categoryName)
                 subCategoryLinks = self._getSubCategoriesLinks(block)
                 self.debug('Найдено %d подкатегорий', len(subCategoryLinks))
+                # Из категории получаем подкатегории и в них уже заходим
                 for link in subCategoryLinks:
                     self.debug('Обрабатываю подкатегорию %s (%s)', link.text, link.attrib['href'])
                     # Сохраним категорию/подкатегорию в БД
-                    self._setCategory(categoryName, link.text)
+                    self._setCategory(id_resource, categoryName, link.text)
                     while self._grab.response.code == 200:
                         goods = self._getGoods(self._prepareURL(link.attrib['href']))
+                        sleep(self._conf.getfloat('behavior','pageDelay'))
                     self.debug('В подкатегории "%s" обработано %d страниц', link.text, self._currentPage)
+                    sleep(self._conf.getfloat('behavior','categoryDelay'))
                     return # выход
                 return # выход
+            sleep(self._conf.getfloat('behavior', 'resourceDelay'))
