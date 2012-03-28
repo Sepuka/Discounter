@@ -24,11 +24,13 @@ DROP TABLE IF EXISTS `category`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `category` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `id_resource` bigint(20) unsigned NOT NULL,
   `category` varchar(64) NOT NULL,
   `subcategory` varchar(128) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `category` (`category`,`subcategory`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8;
+  UNIQUE KEY `uniqueindex` (`id_resource`,`category`,`subcategory`),
+  CONSTRAINT `category_ibfk_1` FOREIGN KEY (`id_resource`) REFERENCES `resource` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=180 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -65,7 +67,7 @@ CREATE TABLE `good` (
   KEY `id_category` (`id_category`),
   CONSTRAINT `good_ibfk_1` FOREIGN KEY (`id_resource`) REFERENCES `resource` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `good_ibfk_2` FOREIGN KEY (`id_category`) REFERENCES `category` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -116,4 +118,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2012-03-27 15:26:05
+-- Dump completed on 2012-03-28 17:11:55
