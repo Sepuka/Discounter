@@ -53,11 +53,14 @@ class DB(object):
         try:
             self._cursor.execute(query, params)
             if self._cursor._warnings:
-                self._log.critical('warning detected!', moduleName=self.__class__.__name__)
-                sys.exit('Warning detected!')
+                self._log.warning('warning detected!', moduleName=self.__class__.__name__)
+                wquery = """SHOW WARNINGS"""
+                self.execute(wquery)
+                for warning in self.cursor.fetchall():
+                    self._log.warning('WARNING: "%s" in query "%s"', warning[2], query, moduleName=self.__class__.__name__)
         except (MySQLdb.Error, MySQLdb.IntegrityError), e:
-            self._log.critical('Mysql runtime error %d: %s', e.args[0], e.args[1], self.__class__.__name__)
-            sys.exit(e.args[1])
+            self._log.critical('Mysql runtime error %d: %s', e.args[0], e.args[1], moduleName=self.__class__.__name__)
+            raise
         except (TypeError,), e:
             self._log.debug('trace:\n%s', '\n'.join(format_list(extract_tb(sys.exc_info()[2]))))
             self._log.critical('Ошибка формирования запроса из шаблона: %s', e, moduleName=self.__class__.__name__)

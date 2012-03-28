@@ -5,9 +5,8 @@
 from config import Config
 from logger import Logger
 from db import DB, ENABLED_RESOURCE, DISABLED_RESOURCE
-import sys
+import sys, grab, datetime
 from abstractmodule import AbstractModule
-import grab
 from grabber import FailedExtractURLException
 from functools import partial
 from time import sleep
@@ -132,9 +131,10 @@ class Infoskidka(AbstractModule):
         Добавление категории и подкатегории
         Если категория в ресурсе уже существует, она затрется, при этом
         удалятся все товары из таблицы good
+        @return int
         """
         query = """REPLACE INTO category SET id_resource=%s, category=%s, subcategory=%s"""
-        self._db.execute(query, id_resource, category, subcategory)
+        return self._db.execute(query, id_resource, category, subcategory)
 
     def _preparePageURL(self, url):
         """
@@ -145,8 +145,46 @@ class Infoskidka(AbstractModule):
         self._currentPage += 1
         return '%s/page.%d.html' % (url[:url.rfind('.')], self._currentPage)
 
-    def _parseStore(self, url):
+    def _processDiscountList(self, id_resource, id_category, url):
+        patternDiscountBlock = '//*/div[@class="actions_list"]'
+        patternDiscountItem = '//*/div[@class="action_item"]'
+        patternTitle = 'strong'
+        patternDescription = 'p[@itemprop="description"]'
+        patternStartDate = 'ul/li/time[@itemprop="startDate"]'
+        patternEndDate = 'ul/li/time[@itemprop="endDate"]'
+        query = """INSERT INTO good SET id_resource=%s, id_category=%s, url=%s, store=%s,""" +\
+                """title=%s, description=%s, beginDate=%s, endDate=%s"""
+        try:
+            store = self._grab.xpath('//*/h2/span[@itemprop="name"]').text
+            discountBlock = self._grab.xpath(patternDiscountBlock)
+            for item in discountBlock.xpath(patternDiscountItem):
+                title = item.find(patternTitle).text
+                try:
+                    description = item.find(patternDescription).text
+                except AttributeError:
+                    description = None
+                try:
+                    start = item.find(patternStartDate).text
+                    start = datetime.datetime.strptime(start, '%d.%m.%y').strftime('%Y-%m-%d')
+                except AttributeError:
+                    start = None
+                try:
+                    end = item.find(patternEndDate).text
+                    end = datetime.datetime.strptime(end, '%d.%m.%y').strftime('%Y-%m-%d')
+                except AttributeError:
+                    end = None
+                #TODO разбор процентов, адресов, метро
+                self._db.execute(query, id_resource, id_category, url, store, title, description, start, end)
+        except grab.error.DataNotFound:
+            self.critical('Ошибка обработки "%s"', url)
+
+    def _parseStore(self, id_resource, id_category, url):
         self.info('Грабим %s', url)
+        self._grab.go(url)
+        if self._grab.response.code <> 200:
+            self.warning('"%s" недоступен. Код ответа "%s"', url, self._grab.status)
+            return
+        self._processDiscountList(id_resource, id_category, url)
 
     def parse(self):
         """
@@ -172,15 +210,17 @@ class Infoskidka(AbstractModule):
                 for link in subCategoryLinks:
                     self.debug('Обрабатываю подкатегорию %s (%s)', link.text, link.attrib['href'])
                     # Сохраним категорию/подкатегорию в БД
-                    self._setCategory(id_resource, categoryName, link.text)
+                    id_category = self._setCategory(id_resource, categoryName, link.text)
                     # Постраничный перебор категории
                     while self._grab.response.code == 200:
-                        self._grab.go(self._preparePageURL(link.attrib['href']))
+                        pageURL = self._preparePageURL(link.attrib['href'])
+                        self.debug('Переход на страницу %s', pageURL)
+                        self._grab.go(pageURL)
                         # Находим область со ссылками на товары
                         goodsArea = self._getGoodsArea()
                         # Получаем список ссылок на магазины и грабим их
                         for store in self._getGoodLinks(goodsArea):
-                            self._parseStore(store)
+                            self._parseStore(id_resource, id_category, store)
                             sleep(self._conf.getfloat('behavior', 'resourceDelay'))
                         # На странице находится таблица со списком ссылок и коротких описаний на товары
                         sleep(self._conf.getfloat('behavior', 'pageDelay'))
