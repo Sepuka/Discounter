@@ -57,9 +57,9 @@ class Infoskidka(AbstractModule):
         else:
             raise FailedExtractURLException('Ошибка извлечения адреса модуля %s' % __name__)
 
-    def _getLinksArea(self):
+    def _getCategoriesArea(self):
         """
-        Получение области данных содержащих ссылки и их описание
+        Получение области данных содержащих ссылки на категории и их описание
         А также описание категории
         @return lxml.html.HtmlElement
         """
@@ -67,17 +67,46 @@ class Infoskidka(AbstractModule):
         try:
             return self._grab.xpath(pattern)
         except grab.error.DataNotFound:
-            self.critical('Не удалось получить область ссылок')
+            self.critical('Не удалось получить область ссылок на категории')
+            raise
+
+    def _getGoodsArea(self):
+        """
+        Получение области данных содержащих ссылки на товары
+        и их короткое описание
+        @return lxml.html.HtmlElement
+        """
+        pattern = '//*/table[@class="shopwindow skidkiTable"]'
+        try:
+            return self._grab.xpath(pattern)
+        except grab.error.DataNotFound:
+            self.critical('Не удалось получить область ссылок на товары')
             raise
 
     def _getCategoryListBlocks(self, linksArea):
         """
-        Получение списка блоков содержащих категорию
+        Получение списка блоков содержащих категории
         Возвращает список элементов lxml.html.HtmlElement
         @return list
         """
         pattern = 'li[starts-with(@class, "ct")]'
-        return linksArea.xpath(pattern)
+        try:
+            return linksArea.xpath(pattern)
+        except grab.error.DataNotFound:
+            self.critical('Не удалось получить список блоков содержащих категории')
+            raise
+
+    def _getGoodLinks(self, linksArea):
+        """
+        Получение списка ссылок на магазины предоставляющие скидки
+        @return list
+        """
+        pattern = 'tr/td[starts-with(@class, "actionText")]/a'
+        try:
+            return map(lambda elem: elem.attrib['href'], linksArea.xpath(pattern))
+        except grab.error.DataNotFound:
+            self.critical('Не удалось получить список блоков содержащих ссылку на товар')
+            raise
 
     def _getSubCategoriesLinks(self, category):
         """
@@ -98,11 +127,6 @@ class Infoskidka(AbstractModule):
         pattern = 'div/h3'
         return blockCategories.xpath(pattern)[0].text
 
-    def _getGoods(self, url):
-        self.debug('Получение ссылок на скидки в магазинах с "%s"', url)
-        self._grab.go(url)
-        return []
-
     def _setCategory(self, id_resource, category, subcategory):
         """
         Добавление категории и подкатегории
@@ -112,7 +136,7 @@ class Infoskidka(AbstractModule):
         query = """REPLACE INTO category SET id_resource=%s, category=%s, subcategory=%s"""
         self._db.execute(query, id_resource, category, subcategory)
 
-    def _prepareURL(self, url):
+    def _preparePageURL(self, url):
         """
         Подготовка адреса страницы со ссылками на магазины
         Магазины хранятся постранично
@@ -120,6 +144,9 @@ class Infoskidka(AbstractModule):
         """
         self._currentPage += 1
         return '%s/page.%d.html' % (url[:url.rfind('.')], self._currentPage)
+
+    def _parseStore(self, url):
+        self.info('Грабим %s', url)
 
     def parse(self):
         """
@@ -134,7 +161,7 @@ class Infoskidka(AbstractModule):
             self._grab.go(url)
             self._grab.tree.make_links_absolute(url)
             # Получим область ссылок с описанием категорий и подкатегорий
-            linksArea = self._getLinksArea()
+            linksArea = self._getCategoriesArea()
             # Из области ссылок получаем блоки категорий
             for block in self._getCategoryListBlocks(linksArea):
                 categoryName = self._getCategoryName(block)
@@ -146,11 +173,19 @@ class Infoskidka(AbstractModule):
                     self.debug('Обрабатываю подкатегорию %s (%s)', link.text, link.attrib['href'])
                     # Сохраним категорию/подкатегорию в БД
                     self._setCategory(id_resource, categoryName, link.text)
+                    # Постраничный перебор категории
                     while self._grab.response.code == 200:
-                        goods = self._getGoods(self._prepareURL(link.attrib['href']))
-                        sleep(self._conf.getfloat('behavior','pageDelay'))
+                        self._grab.go(self._preparePageURL(link.attrib['href']))
+                        # Находим область со ссылками на товары
+                        goodsArea = self._getGoodsArea()
+                        # Получаем список ссылок на магазины и грабим их
+                        for store in self._getGoodLinks(goodsArea):
+                            self._parseStore(store)
+                            sleep(self._conf.getfloat('behavior', 'resourceDelay'))
+                        # На странице находится таблица со списком ссылок и коротких описаний на товары
+                        sleep(self._conf.getfloat('behavior', 'pageDelay'))
                     self.debug('В подкатегории "%s" обработано %d страниц', link.text, self._currentPage)
-                    sleep(self._conf.getfloat('behavior','categoryDelay'))
+                    sleep(self._conf.getfloat('behavior', 'categoryDelay'))
                     return # выход
                 return # выход
             sleep(self._conf.getfloat('behavior', 'resourceDelay'))
