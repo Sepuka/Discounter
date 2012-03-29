@@ -5,7 +5,7 @@
 from config import Config
 from logger import Logger
 from db import DB, ENABLED_RESOURCE, DISABLED_RESOURCE
-import sys, grab, datetime
+import sys, grab, datetime, re
 from abstractmodule import AbstractModule
 from grabber import FailedExtractURLException
 from functools import partial
@@ -153,7 +153,7 @@ class Infoskidka(AbstractModule):
         patternStartDate = 'ul/li/time[@itemprop="startDate"]'
         patternEndDate = 'ul/li/time[@itemprop="endDate"]'
         query = """INSERT INTO good SET id_resource=%s, id_category=%s, url=%s, store=%s,""" +\
-                """title=%s, description=%s, beginDate=%s, endDate=%s"""
+                """discount=%s, title=%s, description=%s, beginDate=%s, endDate=%s"""
         try:
             store = self._grab.xpath('//*/h2/span[@itemprop="name"]').text
             discountBlock = self._grab.xpath(patternDiscountBlock)
@@ -173,8 +173,19 @@ class Infoskidka(AbstractModule):
                     end = datetime.datetime.strptime(end, '%d.%m.%y').strftime('%Y-%m-%d')
                 except AttributeError:
                     end = None
+
+                percent = re.search('(?<!\d)(\d{1,2})\s?%', title)
+                if percent:
+                    percent = percent.group(1)
+                else:
+                    percent = re.search('(?<!\d)(\d{1,2})\s?%', description)
+                    if percent:
+                        percent = percent.group(1)
+                    else:
+                        percent = None
+
                 #TODO разбор процентов, адресов, метро
-                self._db.execute(query, id_resource, id_category, url, store, title, description, start, end)
+                self._db.execute(query, id_resource, id_category, url, store, percent, title, description, start, end)
         except grab.error.DataNotFound:
             self.critical('Ошибка обработки "%s"', url)
 
