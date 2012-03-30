@@ -152,11 +152,34 @@ class Infoskidka(AbstractModule):
         patternDescription = 'p[@itemprop="description"]'
         patternStartDate = 'ul/li/time[@itemprop="startDate"]'
         patternEndDate = 'ul/li/time[@itemprop="endDate"]'
-        query = """INSERT INTO good SET id_resource=%s, id_category=%s, url=%s, store=%s,""" +\
-                """discount=%s, title=%s, description=%s, beginDate=%s, endDate=%s"""
+        # Таблица адресов магазинов
+        patternTableAddresses = '//*/table[@class="viewshop_list shop_geography shopwindow"]'
+        # Список всех адресов относительно таблицы адресов
+        patternAllAddresses = 'tr/td/span[@itemprop="address"]/span[@itemprop="streetAddress"]'
+        # Список все станций метро отностельно таблицы адресов
+        patternAllMetro = 'tr/td/img/@title'
+        query = """INSERT INTO good SET id_resource=%s, id_category=%s, url=%s, metro=%s, store=%s,""" +\
+                """address=%s, discount=%s, title=%s, description=%s, beginDate=%s, endDate=%s"""
         try:
             store = self._grab.xpath('//*/h2/span[@itemprop="name"]').text
             discountBlock = self._grab.xpath(patternDiscountBlock)
+            try:
+                # Получим таблицу с адресами магазинов
+                tableAddresses = self._grab.xpath(patternTableAddresses)
+                # Получим все адреса в список
+                listAddresses = tableAddresses.xpath(patternAllAddresses)
+                listAddresses = reduce(lambda res, addr: '%s;%s' % (res, addr.text), listAddresses, '')[1:]
+            except grab.error.DataNotFound:
+                self.warning('Адресов в магазине %s (%s) не найдено', store, url)
+                listAddresses = None
+            else:
+                try:
+                    listMetro = tableAddresses.xpath(patternAllMetro)
+                    listMetro = ';'.join(listMetro)
+                except grab.error.DataNotFound:
+                    self.warning('Станций метро в магазине %s (%s) не найдено', store, url)
+                    listMetro = None
+            # Разбор всех акций проходящих в магазине
             for item in discountBlock.xpath(patternDiscountItem):
                 title = item.find(patternTitle).text
                 try:
@@ -174,6 +197,7 @@ class Infoskidka(AbstractModule):
                 except AttributeError:
                     end = None
 
+                # Поиск процентов в заголовке или описании
                 percent = re.search('(?<!\d)(\d{1,2})\s?%', title)
                 if percent:
                     percent = percent.group(1)
@@ -184,12 +208,15 @@ class Infoskidka(AbstractModule):
                     else:
                         percent = None
 
-                #TODO разбор процентов, адресов, метро
-                self._db.execute(query, id_resource, id_category, url, store, percent, title, description, start, end)
+                self._db.execute(query, id_resource, id_category, url, listMetro,\
+                    store, listAddresses, percent, title, description, start, end)
         except grab.error.DataNotFound:
             self.critical('Ошибка обработки "%s"', url)
 
     def _parseStore(self, id_resource, id_category, url):
+        """
+        Парсинг магазина
+        """
         self.info('Грабим %s', url)
         self._grab.go(url)
         if self._grab.response.code <> 200:

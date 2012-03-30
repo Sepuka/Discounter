@@ -8,6 +8,7 @@ from db import DB
 from modules.abstractmodule import AbstractModule
 from traceback import extract_tb, format_list
 import sys
+from time import gmtime, strftime
 
 class FailedExtractURLException(Exception):
     pass
@@ -36,9 +37,9 @@ class Grabber(object):
         @type: tuple
         """
         for module in modules:
-            self._log.debug('Обрабатываю модуль "%s"', module[0])
+            self._log.debug('Обрабатываю модуль "%s"', module[1])
             # Импорт модуля
-            mod_pack = __import__('modules.' + module[0])
+            mod_pack = __import__('modules.' + module[1])
             # например <module 'modules' from '/srv/www/Discounter/grabber/modules/__init__.pyc'>
             modName = getattr(mod_pack, dir(mod_pack)[-1])
             # Определение имени модуля (стоит последним)
@@ -53,6 +54,9 @@ class Grabber(object):
                 except (Exception,), e:
                     self._log.debug('trace:\n%s', '\n'.join(format_list(extract_tb(sys.exc_info()[2]))))
                     self._log.error('Ошибка работы обработчика %s:%s', classObj, e)
+                else:
+                    query = """UPDATE `resource` SET `successGrab`=%s WHERE `id`=%s"""
+                    self._db.execute(query, strftime("%Y-%m-%d %H:%M:%S", gmtime()), module[0])
             else:
                 self._log.error('Класс %s не является потомком %s !', classObj, AbstractModule)
 
@@ -61,7 +65,7 @@ class Grabber(object):
         Получение кортежа модулей для работы
         @return tuple
         """
-        query = """SELECT `module` FROM `resource` WHERE `enabled`='1'"""
+        query = """SELECT `id`, `module` FROM `resource` WHERE `enabled`='1'"""
         self._db.execute(query)
         if self._db.cursor.rowcount:
             return self._db.cursor.fetchall()
