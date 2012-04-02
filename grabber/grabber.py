@@ -41,7 +41,8 @@ class Grabber(object):
             # Импорт модуля
             mod_pack = __import__('modules.' + module[1])
             # например <module 'modules' from '/srv/www/Discounter/grabber/modules/__init__.pyc'>
-            modName = getattr(mod_pack, dir(mod_pack)[-1])
+            moduleIndex = dir(mod_pack).index(module[1])
+            modName = getattr(mod_pack, dir(mod_pack)[moduleIndex])
             # Определение имени модуля (стоит последним)
             # например ['__builtins__', '__doc__', '__file__', '__name__', '__package__', '__path__', 'abstractmodule', 'infoskidka']
             className = modName.__name__.split('.')[-1].capitalize()
